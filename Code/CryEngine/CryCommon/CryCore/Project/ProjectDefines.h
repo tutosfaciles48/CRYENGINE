@@ -1,4 +1,4 @@
-// Copyright 2001-2016 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2017 Crytek GmbH / Crytek Group. All rights reserved. 
 
 #ifndef PROJECTDEFINES_H
 #define PROJECTDEFINES_H
@@ -11,12 +11,6 @@
 
 // This was chewing up a lot of CPU time just waiting for a connection
 #define NO_LIVECREATE
-
-// [VR]
-// Optional VR IHmdRenderer integration, note that HMD SDKs are implemented separately in plug-ins.
-#if !defined(DEDICATED_SERVER) && defined(CRY_PLATFORM_WINDOWS)
-	#define INCLUDE_VR_RENDERING
-#endif
 
 // Scaleform base configuration
 #if defined(DEDICATED_SERVER)
@@ -36,11 +30,6 @@
 		#define ENABLE_STATS_AGENT
 	#endif
 #endif
-
-// The following definitions are used by Sandbox and RC to determine which platform support is needed
-#define TOOLS_SUPPORT_POWERVR
-#define TOOLS_SUPPORT_DURANGO
-#define TOOLS_SUPPORT_ORBIS
 
 // Durango SDK and Orbis SDK are 64-bit only
 #if !(CRY_PLATFORM_WINDOWS && CRY_PLATFORM_64BIT)
@@ -208,7 +197,10 @@ extern void SliceAndSleep(const char* pFunc, int line);
 #define ENABLE_FLASH_INFO
 #endif
 
-#if !defined(ENABLE_LW_PROFILERS)
+// Remove the line below to disable the console in release builds
+#define ENABLE_DEVELOPER_CONSOLE_IN_RELEASE
+
+#if !defined(ENABLE_LW_PROFILERS) && !defined(ENABLE_DEVELOPER_CONSOLE_IN_RELEASE)
 	#ifndef USE_NULLFONT
 		#define USE_NULLFONT      1
 	#endif
@@ -319,11 +311,7 @@ extern void SliceAndSleep(const char* pFunc, int line);
 	#define ENABLE_LOADING_PROFILER
 #endif
 
-#if CRY_PLATFORM_ORBIS && (!defined(_RELEASE) || defined(PERFORMANCE_BUILD))
-	#define SUPPORT_HW_MOUSE_CURSOR
-#endif
-
-#if !defined(_DEBUG) && CRY_PLATFORM_WINDOWS && !defined(IS_EAAS)
+#if !defined(_DEBUG) && CRY_PLATFORM_WINDOWS
 //# define CRY_PROFILE_MARKERS_USE_GPA
 //# define CRY_PROFILE_MARKERS_USE_NVTOOLSEXT
 #endif
@@ -344,16 +332,13 @@ extern void SliceAndSleep(const char* pFunc, int line);
 
 //! Defines for various encryption methodologies that we support (or did support at some stage).
 #define SUPPORT_UNENCRYPTED_PAKS             //Enable during dev and on consoles to support paks that aren't encrypted in any way
-#if !(defined(IS_EAAS) && defined(_RELEASE)) //For EaaS release builds, require signing (at least)
-	#define SUPPORT_UNSIGNED_PAKS              //Enabled during dev to test release builds easier (remove this to enforce signed paks in release builds)
-#endif
 
 // #define SUPPORT_XTEA_PAK_ENCRYPTION                             //! C2 Style. Compromised - do not use.
 // #define SUPPORT_STREAMCIPHER_PAK_ENCRYPTION                     //! C2 DLC Style - by Mark Tully.
 #if !CRY_PLATFORM_DURANGO
 	#define SUPPORT_RSA_AND_STREAMCIPHER_PAK_ENCRYPTION //C3/Warface Style - By Timur Davidenko and integrated by Rob Jessop
 #endif
-#if !defined(_RELEASE) || defined(PERFORMANCE_BUILD)
+#if (!defined(_RELEASE) || defined(PERFORMANCE_BUILD)) && !defined(SUPPORT_UNSIGNED_PAKS)
 	#define SUPPORT_UNSIGNED_PAKS //Enable to load paks that aren't RSA signed
 #endif                          //!_RELEASE || PERFORMANCE_BUILD
 #if !CRY_PLATFORM_DURANGO

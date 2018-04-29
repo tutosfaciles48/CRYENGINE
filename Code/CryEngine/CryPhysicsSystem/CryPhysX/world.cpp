@@ -1,4 +1,4 @@
-// Copyright 2001-2016 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2017 Crytek GmbH / Crytek Group. All rights reserved. 
 
 #include "StdAfx.h"
 
@@ -21,12 +21,13 @@ void PhysXWorld::Release()
 	delete this;
 }
 
-void PhysXWorld::SetupEntityGrid(int axisz, Vec3 org, int nx, int ny, float stepx, float stepy, int log2PODscale, int bCyclic) 
+IPhysicalEntity* PhysXWorld::SetupEntityGrid(int axisz, Vec3 org, int nx, int ny, float stepx, float stepy, int log2PODscale, int bCyclic, IPhysicalEntity* pHost, const QuatT& posInHost) 
 {
 	PxBroadPhaseRegion rgn;
 	rgn.bounds = PxBounds3(V(org-Vec3(0,0,100)), V(org+Vec3(nx*stepx,ny*stepy,200)));
 	g_cryPhysX.Scene()->removeBroadPhaseRegion(m_idWorldRgn);
 	m_idWorldRgn = g_cryPhysX.Scene()->addBroadPhaseRegion(rgn);
+	return nullptr;
 }
 
 IPhysicalEntity *PhysXWorld::SetHeightfieldData(const heightfield *phf, int *pMatMapping, int nMats)
@@ -185,7 +186,7 @@ int CopyHitData(const PxRaycastHit &src, ray_hit &dst, bool valid=true, const Ve
 		return 0;
 	}
 	PhysXEnt *pent = Ent(src.actor);
-	dst.pCollider = pent;
+	dst.pCollider = pent->m_mask & (8|16) ? PhysXEnt::g_pPhysWorld->m_phf : pent;
 	dst.bTerrain = pent==PhysXEnt::g_pPhysWorld->m_phf;
 	dst.dist = src.distance;
 	dst.pt = V(src.position);
@@ -530,18 +531,19 @@ int PhysXWorld::GetEntitiesInBox(Vec3 ptmin, Vec3 ptmax, IPhysicalEntity**& pLis
 			PxRigidBody *body0 = (*(PhysXEnt**)pent0)->m_actor->isRigidBody(), *body1 = (*(PhysXEnt**)pent1)->m_actor->isRigidBody();
 			return sgn((body1 ? body1->getInvMass():0.0f) - (body0 ? body0->getInvMass():0.0f));
 		});
-	if ((PhysXEnt**)pList != pListSrc)
-		memcpy(pList, pListSrc, filter.nEnts*sizeof(pList[0]));
 	for(int i=0; i<filter.nEnts; i++) 
 		AtomicAdd(&pListSrc[i]->m_mask, -(1<<filter.ithread));
+	int n = 0;
+	for(int i=0; i<filter.nEnts; i++)	if (!(pListSrc[i]->m_mask & (8|16)))
+		pList[n++] = pListSrc[i];
 	if (objtypes & ent_addref_results)
-		for(int i=0; i<filter.nEnts; pListSrc[i++]->AddRef()); 
+		for(int i=0; i<n; pListSrc[i++]->AddRef()); 
 		
 	WriteLock lock(m_lockMask);
 	m_maskUsed &= ~(1u<<filter.ithread);
 	if (filter.nEnts>64)
 		AtomicAdd(&m_lockEntList, -WRITE_LOCK_VAL);
-	return filter.nEnts;
+	return n;
 }
 
 void PhysXWorld::AddEventClient(int type, int(*func)(const EventPhys*), int bLogged, float priority)
@@ -669,7 +671,7 @@ void PhysXWorld::TimeStep(float dt, int flags)
 	if (flags & ent_rigid && (!m_vars.bSingleStepMode || m_vars.bDoStep)) {
 		float dtFixed = g_cryPhysX.dt();
 		for(int i=0; m_dtSurplus+dt>dtFixed && i<m_vars.nMaxSubsteps; dt-=dtFixed,i++)	{
-			g_cryPhysX.Scene()->simulate(dtFixed);
+			g_cryPhysX.Scene()->simulate(dtFixed,0,m_scratchBuf.data(),m_scratchBuf.size());
 			WriteLockScene lockScene;
 			{ WriteLock lock(m_lockCollEvents); 
 				g_cryPhysX.Scene()->fetchResults(true);
@@ -841,6 +843,7 @@ PhysXWorld::PhysXWorld(ILog* pLog) : m_debugDraw(false)
 	bqd.preFilterShader = RaycastBatchFilter;
 	m_batchQuery[0] = g_cryPhysX.Scene()->createBatchQuery(bqd);
 	m_batchQuery[1] = g_cryPhysX.Scene()->createBatchQuery(bqd);
+	m_scratchBuf.resize(1<<11);
 
 	m_pbGlob.waterDensity = 1000;
 	m_pbGlob.kwaterDensity = 1;

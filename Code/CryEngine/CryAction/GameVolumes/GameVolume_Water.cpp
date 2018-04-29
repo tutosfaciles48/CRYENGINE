@@ -1,4 +1,4 @@
-// Copyright 2001-2016 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2017 Crytek GmbH / Crytek Group. All rights reserved. 
 
 #include "StdAfx.h"
 #include "GameVolume_Water.h"
@@ -307,14 +307,14 @@ void CGameVolume_Water::SetupVolume()
 	if (GetVolumeInfoForEntity(GetEntityId(), volumeInfo) == false)
 		return;
 
-	if (volumeInfo.verticesCount < 3)
+	if (volumeInfo.verticesCount < 4)
 		return;
 
 	WaterProperties waterProperties(GetEntity());
 
 	if (waterProperties.isRiver)
 	{
-		if (volumeInfo.verticesCount < 4 || volumeInfo.verticesCount % 2 != 0)
+		if (volumeInfo.verticesCount % 2 != 0)
 			return;
 
 		int numSegments = (volumeInfo.verticesCount / 2) - 1;

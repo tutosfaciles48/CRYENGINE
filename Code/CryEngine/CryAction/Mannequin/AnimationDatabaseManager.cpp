@@ -1,4 +1,4 @@
-// Copyright 2001-2016 Crytek GmbH / Crytek Group. All rights reserved.
+// Copyright 2001-2017 Crytek GmbH / Crytek Group. All rights reserved. 
 
 //
 ////////////////////////////////////////////////////////////////////////////
@@ -338,6 +338,12 @@ const IAnimationDatabase* CAnimationDatabaseManager::FindDatabase(uint32 crcFile
 
 const IAnimationDatabase* CAnimationDatabaseManager::Load(const char* databaseName)
 {
+	//Don't load if there is no database
+	if (databaseName == nullptr || strlen(databaseName) == 0)
+	{
+		return nullptr;
+	}
+
 	MEMSTAT_CONTEXT_FMT(EMemStatContextTypes::MSC_Mannequin, 0, "Load ADB: %s", databaseName);
 
 	const IAnimationDatabase* pDb = CAnimationDatabaseLibrary::LoadResource(databaseName, 0);
